@@ -4,11 +4,13 @@ project(c_practice C)
 set(CMAKE_C_STANDARD 11)
 
 include_directories(llhttp-demo/src)
+include_directories(llhttp-demo/lib)
 
 add_executable(c_practice
-        llhttp-demo/src/api.c
-        llhttp-demo/src/http.c
-        llhttp-demo/src/llhttp.c
-        llhttp-demo/src/llhttp.h
+        llhttp-demo/lib/api.c
+        llhttp-demo/lib/http.c
+        llhttp-demo/lib/llhttp.c
+        llhttp-demo/lib/llhttp.h
+        llhttp-demo/bench/bench.c
         http-parser-demo/src/main.c
         llhttp-demo/src/main.c)

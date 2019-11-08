@@ -1,4 +1,4 @@
-#include "http_parser.h"
+#include "llhttp.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,16 +25,16 @@ static const char data[] =
     "Cache-Control: max-age=0\r\n\r\nb\r\nhello world\r\n0\r\n";
 static const size_t data_len = sizeof(data) - 1;
 
-static int on_info(http_parser* p) {
+static int on_info(llhttp_t* p) {
   return 0;
 }
 
 
-static int on_data(http_parser* p, const char *at, size_t length) {
+static int on_data(llhttp_t* p, const char *at, size_t length) {
   return 0;
 }
 
-static http_parser_settings settings = {
+static llhttp_settings_t settings = {
   .on_message_begin = on_info,
   .on_headers_complete = on_info,
   .on_message_complete = on_info,
@@ -46,11 +46,13 @@ static http_parser_settings settings = {
 };
 
 int bench(int iter_count, int silent) {
-  struct http_parser parser;
+  llhttp_t parser;
   int i;
   int err;
   struct timeval start;
   struct timeval end;
+
+  //llhttp_settings_init(&settings);
 
   if (!silent) {
     err = gettimeofday(&start, NULL);
@@ -59,11 +61,23 @@ int bench(int iter_count, int silent) {
 
   fprintf(stderr, "req_len=%d\n", (int) data_len);
   for (i = 0; i < iter_count; i++) {
-    size_t parsed;
-    http_parser_init(&parser, HTTP_REQUEST);
+    llhttp_init(&parser, HTTP_REQUEST,&settings);
 
-    parsed = http_parser_execute(&parser, &settings, data, data_len);
-    assert(parsed == data_len);
+    enum llhttp_errno err = llhttp_execute(&parser, data, data_len);
+    if (err == HPE_OK) {
+        /* Successfully parsed! */
+//            printf("parsed ok.\r\n");
+    } else {
+        fprintf(stderr, "%d Parse error: %s %s\n",i, llhttp_errno_name(err),
+                parser.reason);
+        const char* error_pos = llhttp_get_error_pos(&parser);
+        if (error_pos != NULL) {
+            printf("get err pos,%s \r\n",error_pos);
+        } else {
+            printf("no err pos \r\n");
+        }
+        break;
+    }
   }
 
   if (!silent) {
