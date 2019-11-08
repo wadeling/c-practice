@@ -34,16 +34,16 @@ int main(int argc, char** argv) {
 
     time_t start,end;
     start = clock();
-    int num = 1 << 10;
-    printf("test num %d\r\n",num);
-    for (int i = 0; i < num; ++i) {
+    uint64_t num = (uint64_t)1 << 30;
+    printf("test num %ld\r\n",num);
+    for (uint64_t i = 0; i < num; ++i) {
         llhttp_init(&parser, HTTP_BOTH, &settings);
         enum llhttp_errno err = llhttp_execute(&parser, request, request_len);
         if (err == HPE_OK) {
             /* Successfully parsed! */
 //            printf("parsed ok.\r\n");
         } else {
-            fprintf(stderr, "%d Parse error: %s %s\n",i, llhttp_errno_name(err),
+            fprintf(stderr, "%ld Parse error: %s %s\n",i, llhttp_errno_name(err),
                     parser.reason);
             const char* error_pos = llhttp_get_error_pos(&parser);
             if (error_pos != NULL) {
@@ -56,9 +56,9 @@ int main(int argc, char** argv) {
     }
 
     end = clock();
-    double total_time = difftime(end,start);
+    double total_time = difftime(end,start)/CLOCKS_PER_SEC;
     double parsed_time = total_time/(double)(num);
-    printf("take time %f ms, every parse action take time %f ms\r\n",total_time,parsed_time);
+    printf("take time %f s, every parse action take time %f us\r\n",total_time,parsed_time*1000*1000);
 
 	printf("end");
 
