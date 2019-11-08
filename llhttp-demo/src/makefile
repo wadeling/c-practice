@@ -9,9 +9,9 @@ obj = $(src:%.c=%.o)
 $(shell mkdir -p $(bin_dir))
     
 $(bin): $(obj)
-	$(cc)  -o $(bin) $(obj)
+	$(cc) -O2 -o $(bin) $(obj)
 %.o: %.cpp $(deps)
-	$(cc)  -c $< -o $@
+	$(cc) -c $< -o $@
 
 clean:
 	find . -name '*.o' -exec rm -rf  '{}' \;
