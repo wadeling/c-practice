@@ -101,7 +101,7 @@ int bench(int iter_count, int silent) {
         bw / (1024 * 1024),
         iter_count,
         (double) iter_count / elapsed ,
-        (elapsed / (double)(iter_count))*1000,
+        (elapsed / (double)(iter_count))*1000*1000,
         elapsed);
 
     fflush(stdout);
