@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     start = clock();
     //uint64_t num = (uint64_t)1 << 1;
     uint64_t num = 16582885;
-    printf("test num %llu,request len %d\r\n",num,request_len);
+    printf("test num %lu,request len %d\r\n",num,request_len);
     for (uint64_t i = 0; i < num; ++i) {
         llhttp_init(&parser, HTTP_BOTH, &settings);
         enum llhttp_errno err = llhttp_execute(&parser, request, request_len);
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
             /* Successfully parsed! */
 //            printf("parsed ok.\r\n");
         } else {
-            fprintf(stderr, "%llu Parse error: %s %s\n",i, llhttp_errno_name(err),
+            fprintf(stderr, "%lu Parse error: %s %s\n",i, llhttp_errno_name(err),
                     parser.reason);
             const char* error_pos = llhttp_get_error_pos(&parser);
             if (error_pos != NULL) {
