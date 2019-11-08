@@ -39,7 +39,6 @@ int main(int argc, char** argv) {
     double total_time = difftime(end,start)/CLOCKS_PER_SEC;
     double parsed_time = total_time/(double)(num);
     printf("take time %f s, every parse action take time %f us\r\n",total_time,parsed_time*1000*1000);
-
 	printf("end");
 
 	return 0;
