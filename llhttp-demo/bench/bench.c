@@ -96,10 +96,12 @@ int bench(int iter_count, int silent) {
     total = (double) iter_count * data_len;
     bw = (double) total / elapsed;
 
-    fprintf(stdout, "%.2f mb | %.2f mb/s | %.2f req/sec | %.2f s\n",
+    fprintf(stdout, "%.2f mb | %.2f mb/s |%d iterator count | %.2f req/sec | %f us/req | %.2f s\n",
         (double) total / (1024 * 1024),
         bw / (1024 * 1024),
-        (double) iter_count / elapsed,
+        iter_count,
+        (double) iter_count / elapsed ,
+        (elapsed / (double)(iter_count))*1000,
         elapsed);
 
     fflush(stdout);
