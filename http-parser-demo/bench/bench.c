@@ -42,7 +42,7 @@ static const char data[] =
     "Referer: https://github.com/joyent/http-parser\r\n"
     "Connection: keep-alive\r\n"
     "Transfer-Encoding: chunked\r\n"
-    "Cache-Control: max-age=0\r\n\r\nb\r\nhello world\r\n0\r\n";
+    "Cache-Control: max-age=0\r\n\r\n";
 static const size_t data_len = sizeof(data) - 1;
 
 static int on_info(http_parser* p) {

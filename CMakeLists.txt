@@ -14,6 +14,7 @@ add_executable(c_practice
         llhttp-demo/lib/llhttp.h
         llhttp-demo/bench/bench.c
         http-parser-demo/src/main.c
+        http-parser-demo/bench/bench.c
         llhttp-demo/src/main.c
         picohttpparser/lib/picohttpparser.c
         picohttpparser/lib/picohttpparser.h
