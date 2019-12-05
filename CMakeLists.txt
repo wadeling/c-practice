@@ -26,4 +26,5 @@ add_executable(c_practice
         picohttpparser/lib/picohttpparser.h
         picohttpparser/bench/bench.c
         time_consume/src/main.cpp
+        thread_local_demo/src/main.cpp
         )
