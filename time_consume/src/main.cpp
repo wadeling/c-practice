@@ -69,6 +69,11 @@ void test_gettimeofday() {
 
 }
 
+
+void test_string_find() {
+
+}
+
 int main() {
 
     test_vector_time();
