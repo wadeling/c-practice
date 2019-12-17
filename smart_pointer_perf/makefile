@@ -22,7 +22,7 @@ TARGET=demo
 BIN_TARGET=${DIR_BIN}/${TARGET}
 
 
-CFLAGS=-Wall -stdc++=
+CFLAGS=-Wall -std=c++14
 INC=-I$(DIR_INC) -I$(LIB_SRC) -I$(SOURCE_DIR)
 ifeq ($(DEBUG), y)
 CFLAGS += -g

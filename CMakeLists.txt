@@ -11,6 +11,7 @@ include_directories(http-parser-demo/lib)
 include_directories(llhttp-demo/src)
 include_directories(llhttp-demo/lib)
 include_directories(time_consume/src)
+include_directories(smart_pointer_perf/src)
 include_directories(picohttpparser/lib)
 include_directories(libevent_demo/src)
 include_directories(libevent_demo/include)
@@ -28,6 +29,7 @@ add_executable(c_practice
         picohttpparser/lib/picohttpparser.h
         picohttpparser/bench/bench.c
         time_consume/src/main.cpp
+        smart_pointer_perf/src/main.cpp
         thread_local_demo/src/main.cpp
         libevent_demo/src/main.cpp
         )
