@@ -1,4 +1,4 @@
-CC=g++
+CC=clang++
 DEBUG=n
 RM=rm -rf
 MAKE=make
@@ -25,7 +25,7 @@ TARGET=demo
 BIN_TARGET=${DIR_BIN}/${TARGET}
 
 
-CFLAGS=-Wall -std=c++11
+CFLAGS=-Wall -std=c++11 -lrt
 INC=-I$(DIR_INC) -I$(LIB_SRC) -I$(SOURCE_DIR)
 ifeq ($(DEBUG), y)
 CFLAGS += -g
