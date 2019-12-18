@@ -17,7 +17,7 @@ int main() {
     int pop_result;
     pop_result = test_que.Pop(value2);
  
-	printf("pop %s\r\n",pop_result.c_str());
+    printf("pop %s\r\n",value2.c_str());
     printf("end\r\n");
     return 0;
 }
