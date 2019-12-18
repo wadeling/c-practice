@@ -31,7 +31,7 @@
 
 #define QUE_SHM_BLOCK_BEGIN 1
 #define QUE_SHM_BLOCK_END 0
-#define QUE_SHM_GET_BLOCK_PTR(p, s, i) (static_cast<SQueShmBlockInfo*>(static_cast<void*>(static_cast<uint8_t*>(p)+ ((sizeof(SQueShmBlockInfo) + s) * i))) )
+#define QUE_SHM_GET_BLOCK_PTR(p, s, i) ((SQueShmBlockInfo*)((uint8_t*)p + ((sizeof(SQueShmBlockInfo) + s) * i)))
 
 #define QUE_SHM_QUE_SIZE 65536
 #define QUE_SHM_VALUE_BLOCK_NUM 65536
@@ -196,7 +196,7 @@ public:
 
     virtual int Write(const void* buf, size_t len)
     {
-        _data.append(static_cast<const char*>(buf), len);
+        _data.append((const char*)buf, len);
         return 0;
     }
 

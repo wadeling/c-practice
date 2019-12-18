@@ -182,11 +182,9 @@ int CQueShm::InitShm()
 
     //共享内存信息记录
     _stShmInfo.iShmFd = fd;
-    _stShmInfo.pstShmInfo = static_cast<SQueShmInfo*>(p);
-    _stShmInfo.pValueBlockArray = static_cast<uint8_t *>(static_cast<void*>(_stShmInfo.pstShmInfo)) + sizeof(SQueShmInfo);
-    _stShmInfo.pIndexArray = static_cast<SQueShmIndexInfo*>( static_cast<void*>(static_cast<uint8_t*>(_stShmInfo.pValueBlockArray)
-            + _stShmInfo.pstShmInfo->u32ValueBlockNum * (sizeof(SQueShmBlockInfo) + _stShmInfo.pstShmInfo->u32ValueBlockDataSize)
-            ));
+    _stShmInfo.pstShmInfo = (SQueShmInfo*)p;
+    _stShmInfo.pValueBlockArray = (uint8_t*)_stShmInfo.pstShmInfo + sizeof(SQueShmInfo);
+    _stShmInfo.pIndexArray = (SQueShmIndexInfo*)((uint8_t*)_stShmInfo.pValueBlockArray + _stShmInfo.pstShmInfo->u32ValueBlockNum * (sizeof(SQueShmBlockInfo) + _stShmInfo.pstShmInfo->u32ValueBlockDataSize));
 
     return 0;
 }
@@ -253,7 +251,7 @@ int CQueShm::BuildShm(int& iShmFd)
         delete[] b;
 
         void* addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, SEEK_SET);
-        if(NULL == addr || reinterpret_cast<void*>(-1) == addr)
+        if(NULL == addr || (void*)-1 == addr)
         {
             close(fd);
             unlink(szPathOld);
@@ -262,14 +260,14 @@ int CQueShm::BuildShm(int& iShmFd)
 
         memset(addr, 0, size);
 
-        SQueShmInfo* pShmInfo = static_cast<SQueShmInfo*>(addr);
+        SQueShmInfo* pShmInfo = (SQueShmInfo*)addr;
         pShmInfo->stFreeValueBlocksInfo.stHeadInfo.u32Head = _iValueBlockNum <= QUE_SHM_BLOCK_BEGIN ? QUE_SHM_BLOCK_END : QUE_SHM_BLOCK_BEGIN;
         pShmInfo->stFreeValueBlocksInfo.u32FreeBlockNum = _iValueBlockNum <= QUE_SHM_BLOCK_BEGIN ? 0 : _iValueBlockNum - QUE_SHM_BLOCK_BEGIN;
         pShmInfo->u32ValueBlockNum = _iValueBlockNum;
         pShmInfo->u32ValueBlockDataSize = _iValueBlockDataSize;
         pShmInfo->u32QueSize = _iQueSize;
 
-        void* pValueBlock = static_cast<uint8_t*>(static_cast<void*>(pShmInfo)) + sizeof(SQueShmInfo);
+        void* pValueBlock = (uint8_t*)pShmInfo + sizeof(SQueShmInfo);
         for(int i = QUE_SHM_BLOCK_BEGIN; i < _iValueBlockNum - 1; ++i)
         {
             QUE_SHM_GET_BLOCK_PTR(pValueBlock, _iValueBlockDataSize, i)->u32Next = i+1;
@@ -279,10 +277,7 @@ int CQueShm::BuildShm(int& iShmFd)
 
         close(fd);
 
-        int result = link(szPathOld, szPathNew);
-        if (result < 0) {
-            return EC_QUE_SHM_SHM_OPEN_FAILED;
-        }
+        link(szPathOld, szPathNew);
 
         unlink(szPathOld);
 
@@ -760,7 +755,7 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
         iRet = GetTailBlockIndex(stBlocksInfoOld.u32Head, size, uiTailIndex);
         if(0 != iRet)
         {
-            if(*static_cast<QUE_SHM_INT_TYPE*>(static_cast<void*>(&stBlocksInfoOld)) == *static_cast<QUE_SHM_INT_TYPE*>(static_cast<void*>(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo)) )
+            if(*(QUE_SHM_INT_TYPE*)&stBlocksInfoOld == *(QUE_SHM_INT_TYPE*)&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo)
             {
                 return iRet;
             }
