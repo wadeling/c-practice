@@ -39,7 +39,7 @@ endif
 all:${BIN_TARGET}
 
 ${BIN_TARGET}: ${OBJ_SOURCE} ${OBJ_LIB}
-	$(CC) $(CFLAGS) $^ -o $@ -lrt
+	$(CC) $(CFLAGS) $^ -o $@ -lrt -lpthread
 
 ${DIR_OBJ}/%.o:$(SOURCE_DIR)/%.cpp $(SOURCE_DEPS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@ 
