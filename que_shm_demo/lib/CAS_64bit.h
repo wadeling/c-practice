@@ -1,27 +1,11 @@
-/*
- * =====================================================================================
- *
- *       Filename:  CAS_64bit.h
- *
- *    Description:  
- *
- *        Version:  1.0
- *        Created:  03/06/2013 11:05:53 AM
- *       Revision:  none
- *       Compiler:  g++
- *
- *         Author:  sunnyhao
- *        Company:  Tencent
- *
- * =====================================================================================
- */
+
 #ifndef __CAS_64BIT_H__
 #define __CAS_64BIT_H__
 
 #include <stdint.h>
 
 #if defined(__x86_64__)
-#define CAS_64bit(p,o,n) __sync_bool_compare_and_swap(static_cast<uint64_t*>(static_cast<void*>(p)), *(static_cast<uint64_t*>(static_cast<void*>(&o))), *(static_cast<uint64_t*>(static_cast<void*>(&n))))
+#define CAS_64bit(p,o,n) __sync_bool_compare_and_swap((uint64_t*)(p), *(uint64_t*)(&o), *(uint64_t*)(&n))
 #else
 #define CAS_64bit(p,o,n) CAS2_IMPL((uint64_t*)(p), (uint32_t*)(&o), (uint32_t*)(&n))
 
@@ -51,7 +35,7 @@ bool CAS2_IMPL(uint64_t* addr,
         uint32_t* new_value) 
 { 
     bool ret; 
-    __asm__ __volatile__(                      
+    __asm__ __volatile__(                       
             "pushl %%ebx;"
             "movl %4, %%ebx;"
             "lock cmpxchg8b %1;\n" 

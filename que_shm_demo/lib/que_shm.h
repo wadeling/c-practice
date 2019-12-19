@@ -1,9 +1,3 @@
-/// @file que_shm.h
-/// @brief
-/// @author samzou samzou@tencent.com
-/// @version 1.0
-/// @date 2018-08-29
-/// @copyright Copyright (c) 2018 Tencent Inc. All Rights Reserved.
 #pragma once
 
 
