@@ -486,6 +486,7 @@ void CQueShm::TryFixWriteIndex()
 int CQueShm::Put(const std::string& sValue)
 {
     CQueShmStringReader oReader(sValue);
+    printf("put oReader end.\r\n");
     return Put(oReader);
 }
 
@@ -499,7 +500,11 @@ int CQueShm::Put(CQueShmReader& oReader)
         return iRet;
     }
 
+    printf("put init end.\r\n");
+
     TryFixReadIndex();
+
+    printf("try fix read index end.\r\n");
 
     if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head))
     {
@@ -532,12 +537,16 @@ int CQueShm::Put(CQueShmReader& oReader)
         return iRet;
     }
 
+    printf("get reader size end\r\n");
+
     int iBlockIndex = 0;
     iRet = MallocBlock(size, iBlockIndex);
     if(0 != iRet)
     {
         return iRet;
     }
+
+    printf("malloc block end\r\n");
 
     iRet = Fragment(oReader,
                     size,
@@ -552,6 +561,8 @@ int CQueShm::Put(CQueShmReader& oReader)
     }
 
     iRet = Put(iBlockIndex);
+
+    printf("put end\r\n");
 
     if(0 != iRet)
     {
@@ -744,12 +755,16 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
         return EC_QUE_SHM_MALLOC_ZERO;
     }
 
+    printf("malloc block ,size %lu,index %d\r\n",size,iBlockIndex);
+
     int iRet = 0;
     SQueShmHeadBlockInfo stBlocksInfoOld;
     SQueShmHeadBlockInfo stBlocksInfoNew;
     for(;;)
     {
         QUE_SHM_CAS(&stBlocksInfoOld, stBlocksInfoOld, _stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo);
+
+        printf("que shm cas end \r\n");
 
         unsigned uiTailIndex = 0;
         iRet = GetTailBlockIndex(stBlocksInfoOld.u32Head, size, uiTailIndex);
@@ -765,13 +780,20 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
             }
         }
 
+        printf("get tail block index end \r\n");
+
         SQueShmBlockInfo* pTailBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, uiTailIndex);
+
+        printf("QUE_SHM_GET_BLOCK_PTR\r\n");
 
         stBlocksInfoNew.u32Head = pTailBlock->u32Next;
         stBlocksInfoNew.u32Seq = stBlocksInfoOld.u32Seq + 1;
 
         if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo, stBlocksInfoOld, stBlocksInfoNew))
         {
+
+            printf("que shm cas end\r\n");
+
             SQueShmBlockInfo* pHeadBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, stBlocksInfoOld.u32Head);
             pHeadBlock->u32ListSize = size;
 
@@ -784,6 +806,8 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
 
             return 0;
         }
+
+        printf("que shm cas end 2\r\n");
     }
 }
 

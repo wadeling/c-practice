@@ -1,5 +1,4 @@
-#CC=clang++
-CC=g++
+CC=clang++
 DEBUG=n
 RM=rm -rf
 MAKE=make
@@ -16,11 +15,8 @@ $(shell mkdir -p $(DIR_OBJ))
 
 SOURCE_FILE=$(wildcard ${SOURCE_DIR}/*.cpp)
 SOURCE_DEPS=$(wildcard ${SOURCE_DIR}/*.h)
-LIB_SRC_FILE=$(wildcard ${LIB_SRC}/*.cpp)
-LIB_DEPS=$(wildcard ${LIB_SRC}/*.h)
 
 OBJ_SOURCE=$(patsubst %.cpp,${DIR_OBJ}/%.o,$(notdir ${SOURCE_FILE}))
-OBJ_LIB=$(patsubst %.cpp,${DIR_OBJ}/%.o,$(notdir ${LIB_SRC_FILE}))
 
 TARGET=demo
 BIN_TARGET=${DIR_BIN}/${TARGET}
@@ -39,14 +35,11 @@ endif
 
 all:${BIN_TARGET}
 
-${BIN_TARGET}: ${OBJ_SOURCE} ${OBJ_LIB}
-	$(CC) $(CFLAGS) $^ -o $@ -lrt -lpthread
+${BIN_TARGET}: ${OBJ_SOURCE} 
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
 
 ${DIR_OBJ}/%.o:$(SOURCE_DIR)/%.cpp $(SOURCE_DEPS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@ 
-
-${DIR_OBJ}/%.o:$(LIB_SRC)/%.cpp $(LIB_DEPS)
-	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 clean:
 	find ${DIR_BIN} . -name '*.o' -exec $(RM) '{}' \;

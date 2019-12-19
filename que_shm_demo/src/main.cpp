@@ -6,7 +6,7 @@ using namespace std;
 
 void que_write() {
     std::string value="aaa";
-    CQueShm que("test_que",10000,1000,10);
+    CQueShm que("test_que",10000,100,10);
     for (int i = 0; i < 100; ++i) {
         int ret = que.Put(value);
         printf("que put ret %d \r\n",ret);
@@ -16,7 +16,7 @@ void que_write() {
 
 void que_read() {
     std::string value;
-    CQueShm que("test_que",10000,1000,10);
+    CQueShm que("test_que",10000,100,10);
     for (int i = 0; i < 100; ++i) {
         int ret = que.Pop(value);
         printf("que read value %s,ret %d \r\n",value.c_str(),ret);
@@ -42,15 +42,19 @@ int test_coredump_case() {
     std::string value;
     int ret;
 
-    if( (ret = que.Put("value")) != 0) {
+    ret = que.Put("value");
+    if( ret != 0) {
         printf("put err %d\r\n",ret);
         return -1;
     }
 
-    if( (ret = que.Pop(value)) != 0) {
+    ret = que.Pop(value);
+    printf("pop ret %d,value %s \r\n",ret,value.c_str());
+    if( ret != 0) {
         printf("pop err %d \r\n",ret);
         return -1;
     }
+    return 0;
 }
 
 void test_base_rw(std::string key) {
@@ -74,7 +78,8 @@ void test_base_rw(std::string key) {
 }
 
 int main() {
-    test_multi_thread_rw();
+//    test_multi_thread_rw();
+    test_coredump_case();
     printf("end\r\n");
     return 0;
 }
