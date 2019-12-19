@@ -25,12 +25,13 @@ TARGET=demo
 BIN_TARGET=${DIR_BIN}/${TARGET}
 
 
-CFLAGS=-Wall -std=c++11 -lrt
+CFLAGS=-Wall -std=c++14
 INC=-I$(DIR_INC) -I$(LIB_SRC) -I$(SOURCE_DIR)
 ifeq ($(DEBUG), y)
 CFLAGS += -g
 else
-CFLAGS += -O3
+CFLAGS += -O2 -DNDEBUG
+#CFLAGS += -O2
 endif
 
 .PHONY:all clean
@@ -38,10 +39,10 @@ endif
 all:${BIN_TARGET}
 
 ${BIN_TARGET}: ${OBJ_SOURCE} ${OBJ_LIB}
-	$(CC) $(CFLAGS) $^ -o $@ 
+	$(CC) $(CFLAGS) $^ -o $@ -lrt
 
 ${DIR_OBJ}/%.o:$(SOURCE_DIR)/%.cpp $(SOURCE_DEPS)
-	$(CC) $(CFLAGS) $(INC) -c $< -o $@
+	$(CC) $(CFLAGS) $(INC) -c $< -o $@ 
 
 ${DIR_OBJ}/%.o:$(LIB_SRC)/%.cpp $(LIB_DEPS)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@
