@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include "concurrentqueue.h"
+#include "blockingconcurrentqueue.h"
 
 using namespace std;
 
@@ -72,12 +73,36 @@ void test_multi_thread_rw() {
     }
 }
 
+void test_block_que() {
+    moodycamel::BlockingConcurrentQueue<int> q;
+    std::thread producer([&]() {
+        for (int i = 0; i != 100; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(i % 10));
+            q.enqueue(i);
+        }
+    });
+
+    std::thread consumer([&]() {
+        for (int i = 0; i != 100; ++i) {
+            int item;
+            printf("before wait \r\n");
+            q.wait_dequeue(item);
+            printf("wait dequ %d\r\n",item);
+        }
+    });
+
+    producer.join();
+    consumer.join();
+
+    assert(q.size_approx() == 0);
+}
 
 int main() {
     //test_base_rw();
 
-    test_multi_thread_rw();
+//    test_multi_thread_rw();
 
+    test_block_que();
     std::cout << "done!\n";
     return 0;
 }
