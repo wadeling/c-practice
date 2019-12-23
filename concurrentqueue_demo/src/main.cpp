@@ -2,12 +2,12 @@
 #include <thread>
 #include <iostream>
 #include <chrono>
+#include <unistd.h>
 
 #include "concurrentqueue.h"
 #include "blockingconcurrentqueue.h"
 
 using namespace std;
-
 
 void test_base_rw() {
 	moodycamel::ConcurrentQueue<int> q;
@@ -97,12 +97,107 @@ void test_block_que() {
     assert(q.size_approx() == 0);
 }
 
+void test_multi_thread_block() {
+    moodycamel::BlockingConcurrentQueue<int> q;
+    const int ProducerCount = 8;
+    const int ConsumerCount = 8;
+    int dequeued[100] = { 0 };
+    std::thread producers[ProducerCount];
+    std::thread consumers[ConsumerCount];
+    std::atomic<int> promisedElementsRemaining(ProducerCount * 10);
+    for (int i = 0; i != ProducerCount; ++i) {
+        producers[i] = std::thread([&](int i) {
+            for (int j = 0; j != 10; ++j) {
+//                std::this_thread::sleep_for(std::chrono::seconds( 1));
+                int item = i*10+j;
+                q.enqueue(item);
+                std::cout << "producer thread " << std::this_thread::get_id() << " enqueue " << item << std::endl;
+            }
+            std::cout << "producer thread " << std::this_thread::get_id() << " end " << std::endl;
+        },i);
+    }
+    std::cout << "all producer end" << std::endl;
+
+    for (int i = 0; i != ConsumerCount; ++i) {
+        consumers[i] = std::thread([&]() {
+            int item;
+            while (promisedElementsRemaining.fetch_sub(1, std::memory_order_relaxed) > 0) {
+                bool ret = q.wait_dequeue_timed(item,std::chrono::seconds(5));
+                if (ret) {
+                    std::cout << "consumer thread " << std::this_thread::get_id() << " dequeue " << item << std::endl;
+                    ++dequeued[item];
+                } else {
+                    std::cout << "consumer thread " << std::this_thread::get_id() << " timeout " << std::endl;
+                    int ret = promisedElementsRemaining.load(std::memory_order_relaxed);
+                    std::cout << "remain count " << ret << std::endl;
+                    if (ret == 0) {
+                        break;
+                    }
+                }
+            }
+            std::cout << "consumer thread " << std::this_thread::get_id() << " end " << std::endl;
+        });
+    }
+
+    std::cout << "all consumer end " << std::endl;
+
+    for (int i = 0; i != ProducerCount; ++i) {
+        producers[i].join();
+    }
+    for (int i = 0; i != ConsumerCount; ++i) {
+        consumers[i].join();
+    }
+
+    std::cout << "result: " << endl;
+    for (int k = 0; k < sizeof(dequeued)/ sizeof(dequeued[0]); ++k) {
+       std::cout << "index " << k << " value " << dequeued[k] << endl;
+    }
+
+    int ret = promisedElementsRemaining.load(std::memory_order_relaxed);
+    std::cout << "ret " << ret << std::endl;
+}
+
+void test_signal() {
+    moodycamel::BlockingConcurrentQueue<int> q;
+    std::thread consumer[5];
+    for (int i = 0; i < 5; ++i) {
+        consumer[i] = std::thread([&](int i) {
+            while (true) {
+                printf("thread[%d] start wait \r\n",i);
+                int item;
+                q.wait_dequeue(item);
+                printf("thread[%d] dequeue %d \r\n",i,item);
+            }
+        },i);
+    }
+
+    sleep(5);
+
+    std::thread producer = std::thread([&]() {
+        for (int i = 0; i < 10; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                bool ret = q.enqueue(i);
+                printf("producer enqueue %d,ret %d\r\n",i,ret);
+            }
+           sleep(2);
+        }
+    });
+
+    for (int j = 0; j < 5; ++j) {
+        consumer[j].join();
+    }
+    producer.join();
+
+}
+
 int main() {
     //test_base_rw();
 
 //    test_multi_thread_rw();
 
-    test_block_que();
+//    test_multi_thread_block();
+//    test_block_que();
+    test_signal();
     std::cout << "done!\n";
     return 0;
 }
