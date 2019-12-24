@@ -37,4 +37,5 @@ add_executable(c_practice
         que_shm_demo/src/main.cpp
         que_shm_demo/lib/que_shm.cpp
         concurrentqueue_demo/src/main.cpp
+        thread_entry_demo/src/main.cpp
         )
