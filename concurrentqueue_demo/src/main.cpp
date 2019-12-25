@@ -201,7 +201,7 @@ void test_unique_ptr_enqueue() {
 
     std::thread producer = std::thread([&]() {
 //            bool ret = q.enqueue(std::forward<std::unique_ptr<student>>(p));
-            bool ret = q.enqueue(p);
+            bool ret = q.enqueue(std::move(p));
             printf("producer enqueue ,ret %d\r\n",ret);
     });
 
