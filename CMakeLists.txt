@@ -17,6 +17,7 @@ include_directories(libevent_demo/src)
 include_directories(libevent_demo/include)
 include_directories(que_shm_demo/lib)
 include_directories(concurrentqueue_demo/include)
+include_directories(thread_entry_demo/src)
 
 add_executable(c_practice
         llhttp-demo/lib/api.c
@@ -38,4 +39,5 @@ add_executable(c_practice
         que_shm_demo/lib/que_shm.cpp
         concurrentqueue_demo/src/main.cpp
         thread_entry_demo/src/main.cpp
+        thread_entry_demo/src/registry.h
         )
