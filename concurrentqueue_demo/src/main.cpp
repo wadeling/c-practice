@@ -18,6 +18,7 @@ void test_base_rw() {
 	assert(found && item == 25);
 	printf("test end\r\n");
 }
+
 void test_multi_thread_rw() {
     printf("test concurrentQueue  \r\n");
     moodycamel::ConcurrentQueue<int> q;
@@ -190,6 +191,34 @@ void test_signal() {
 
 }
 
+struct student {
+    student(int age) : age_(age) {}
+    int age_;
+} ;
+void test_unique_ptr_enqueue() {
+    moodycamel::ConcurrentQueue<std::unique_ptr<student>> q;
+    std::unique_ptr<student> p = std::make_unique<student>(10);
+
+    std::thread producer = std::thread([&]() {
+//            bool ret = q.enqueue(std::forward<std::unique_ptr<student>>(p));
+            bool ret = q.enqueue(p);
+            printf("producer enqueue ,ret %d\r\n",ret);
+    });
+
+    sleep(10);
+
+    printf("student unique ptr %p\r\n",p.get());
+
+    std::thread consumer = std::thread([&]() {
+        std::unique_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        printf("producer dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+
+    producer.join();
+    consumer.join();
+}
+
 int main() {
     //test_base_rw();
 
@@ -197,7 +226,9 @@ int main() {
 
 //    test_multi_thread_block();
 //    test_block_que();
-    test_signal();
+//    test_signal();
+    test_unique_ptr_enqueue();
+
     std::cout << "done!\n";
     return 0;
 }
