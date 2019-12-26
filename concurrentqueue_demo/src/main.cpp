@@ -196,13 +196,23 @@ struct student {
     int age_;
 } ;
 void test_unique_ptr_enqueue() {
+    student s(11);
+    student* stu_p = &s;
+
     moodycamel::ConcurrentQueue<std::unique_ptr<student>> q;
     std::unique_ptr<student> p = std::make_unique<student>(10);
+//    std::unique_ptr<student> p(new student(10)); //ok,new 变量放在heap，由程序管理，另一个线程结束后释放
+//    std::unique_ptr<student> p(stu_p); // coredump. 局部变量放在stack，由系统管理释放。而另一个线程结束时也会释放这块内存。
+//    std::unique_ptr<student> p(&s); //coredump
+    /*
+    student* pxx = new student(10); //ok
+    std::unique_ptr<student> p(pxx);
+    */
 
     std::thread producer = std::thread([&]() {
-//            bool ret = q.enqueue(std::forward<std::unique_ptr<student>>(p));
-            bool ret = q.enqueue(std::move(p));
-            printf("producer enqueue ,ret %d\r\n",ret);
+        //std::move, 原来的对象销毁
+        bool ret = q.enqueue(std::move(p));
+        printf("producer enqueue ,ret %d\r\n",ret);
     });
 
     sleep(10);
@@ -219,6 +229,142 @@ void test_unique_ptr_enqueue() {
     consumer.join();
 }
 
+void test_multi_unique_ptr_enqueue() {
+    moodycamel::ConcurrentQueue<std::unique_ptr<student>> q;
+//    std::unique_ptr<student> p = std::make_unique<student>(10);
+//    std::unique_ptr<student> p1(p.get()); // 除了取到错误数据，还会coredump
+
+    student* pxx = new student(10);
+    std::unique_ptr<student> p(pxx);
+    std::unique_ptr<student> p1(pxx);
+
+    //两个unique ptr.get() 相同，即指向相同地址。
+    printf("init student unique ptr %p,ptr1 %p,ptr age %d,p1 age %d\r\n",p.get(),p1.get(),p->age_,p1->age_);
+
+    std::thread producer = std::thread([&]() {
+        //std::move, 原来的对象销毁
+        bool ret = q.enqueue(std::move(p));
+        printf("producer enqueue ,ret %d\r\n",ret);
+        bool ret1 = q.enqueue(std::move(p1));
+        printf("producer enqueue ,ret1 %d\r\n",ret1);
+    });
+
+    sleep(3);
+
+    printf("student unique ptr %p,ptr1 %p\r\n",p.get(),p1.get());
+
+    std::thread consumer = std::thread([&]() {
+        std::unique_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        printf("consumer dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+    sleep(1);
+
+    std::thread consumer1 = std::thread([&]() {
+        std::unique_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        // age 是一个错误的值。第一个线程处理完后释放了对应的内存，所以这里得到的是一个错误的值
+        printf("consumer1 dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+
+    producer.join();
+    consumer.join();
+    consumer1.join();
+}
+
+void test_multi_shared_ptr_enqueue() {
+    moodycamel::ConcurrentQueue<std::shared_ptr<student>> q;
+    std::shared_ptr<student> p = std::make_shared<student>(10);
+    std::shared_ptr<student> p1(p.get());//两个shared_ptr指向相同对象，会double free
+
+    //shared ptr.get() 相同，即指向相同地址。
+    printf("init student unique ptr %p,ptr1 %p,ptr age %d,p1 age %d\r\n",p.get(),p1.get(),p->age_,p1->age_);
+
+    std::thread producer = std::thread([&]() {
+        //shared ptr ，不用move
+        bool ret = q.enqueue(p);
+        printf("producer enqueue ,ret %d\r\n",ret);
+        bool ret1 = q.enqueue(p1);
+        printf("producer enqueue ,ret1 %d\r\n",ret1);
+    });
+
+    sleep(3);
+
+    printf("student shared ptr %p,ptr1 %p\r\n",p.get(),p1.get());
+
+    std::thread consumer = std::thread([&]() {
+        std::shared_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        printf("consumer dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+    sleep(1);
+
+    std::thread consumer1 = std::thread([&]() {
+        std::shared_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        // age 是一个错误的值。第一个线程处理完后释放了对应的内存，所以这里得到的是一个错误的值
+        printf("consumer1 dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+
+    producer.join();
+    consumer.join();
+    consumer1.join();
+}
+
+void test_shared_ptr_enqueue() {
+    student s(10);
+    moodycamel::ConcurrentQueue<std::shared_ptr<student>> q;
+    std::shared_ptr<student> p = std::make_shared<student>(10);
+
+    //不能使用局部变量，shared_ptr超出scope的时候会尝试delete变量，而程序不能删除一个stack变量，stack变量由系统处理。
+//    std::shared_ptr<student> p(&s);
+
+    //这样ok。shared_ptr销毁时不做任何delete动作。但是不推荐，失去了shared_ptr的意义了.
+//    std::shared_ptr<student> p(&s,[](student*) {});
+
+    printf("init student unique ptr %p,ptr age %d\r\n",p.get(),p->age_);
+
+    std::thread producer = std::thread([&]() {
+        //shared ptr ，不用move
+        bool ret = q.enqueue(p);
+        printf("producer enqueue ,ret %d\r\n",ret);
+    });
+
+    sleep(3);
+
+    printf("student shared ptr %p\r\n",p.get());
+
+    std::thread consumer = std::thread([&]() {
+        std::shared_ptr<student> p;
+        bool ret = q.try_dequeue(p);
+        printf("consumer dequeue ,ret %d,%p,age %d\r\n",ret,p.get(),p->age_);
+    });
+
+    producer.join();
+    consumer.join();
+}
+
+void test_local_str_enqueue() {
+    moodycamel::ConcurrentQueue<std::string> q;
+    std::string s("aaaa");
+
+    std::thread producer = std::thread([&]() {
+        bool ret = q.enqueue(std::move(s));
+        printf("producer enqueue ,ret %d\r\n",ret);
+    });
+    sleep(3);
+    printf("after enqueue string %s\r\n",s.data());
+
+    std::thread consumer = std::thread([&]() {
+        std::string s;
+        bool ret = q.try_dequeue(s);
+        printf("consumer dequeue ,ret %d,%s\r\n",ret,s.data());
+    });
+
+    producer.join();
+    consumer.join();
+}
+
 int main() {
     //test_base_rw();
 
@@ -227,7 +373,12 @@ int main() {
 //    test_multi_thread_block();
 //    test_block_que();
 //    test_signal();
-    test_unique_ptr_enqueue();
+//    test_unique_ptr_enqueue();
+//    test_multi_unique_ptr_enqueue();
+//    test_multi_shared_ptr_enqueue();
+//    test_shared_ptr_enqueue();
+
+    test_local_str_enqueue();
 
     std::cout << "done!\n";
     return 0;
