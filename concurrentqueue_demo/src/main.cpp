@@ -365,6 +365,42 @@ void test_local_str_enqueue() {
     consumer.join();
 }
 
+class Teacher {
+public:
+    std::string name_;
+    int age_;
+};
+class People {
+public:
+    Teacher teacher_;
+};
+using TeacherSharedPtr = std::shared_ptr<Teacher> ;
+void test_member_share_ptr_enqueue() {
+    moodycamel::ConcurrentQueue<TeacherSharedPtr> q;
+    std::thread producer = std::thread([&]() {
+        std::unique_ptr<People> people_ptr = std::make_unique<People>();
+        people_ptr->teacher_.age_=10;
+        people_ptr->teacher_.name_ = "aaa";
+        // coredump,两个指针管理一个对象
+        TeacherSharedPtr teacher_ptr(&people_ptr->teacher_);
+        printf("teacher age %d name %s\r\n",teacher_ptr->age_,teacher_ptr->name_.c_str());
+
+        bool ret = q.enqueue(teacher_ptr);
+        printf("producer enqueue ,ret %d\r\n",ret);
+    });
+    sleep(3);
+    printf("after enqueue \r\n");
+
+    std::thread consumer = std::thread([&]() {
+        TeacherSharedPtr teacher_ptr;
+        bool ret = q.try_dequeue(teacher_ptr);
+        printf("consumer dequeue ,ret %d,%d\r\n",ret,teacher_ptr->age_);
+    });
+
+    producer.join();
+    consumer.join();
+}
+
 int main() {
     //test_base_rw();
 
@@ -378,7 +414,8 @@ int main() {
 //    test_multi_shared_ptr_enqueue();
 //    test_shared_ptr_enqueue();
 
-    test_local_str_enqueue();
+//    test_local_str_enqueue();
+    test_member_share_ptr_enqueue();
 
     std::cout << "done!\n";
     return 0;
