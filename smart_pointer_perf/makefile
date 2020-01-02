@@ -1,5 +1,5 @@
 CC=g++
-DEBUG=n
+DEBUG=y
 RM=rm -rf
 MAKE=make
 

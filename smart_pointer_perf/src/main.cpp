@@ -3,6 +3,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <string>
+#include <memory>
 
 using namespace std;
 enum SmartPointerType {
@@ -44,14 +45,29 @@ void smart_pointer_perf(SmartPointerType type,std::string test_name) {
     printf("[%s] take time %f s, count %llu,smart pointer take time %f us\r\n",test_name.c_str(),total_time,numInt,parsed_time*1000*1000);
 }
 
+std::unique_ptr<int> foo()
+{
+    std::unique_ptr<int> p( new int(10) );
+
+    return p;                   // 1
+}
+std::unique_ptr<int> foo2() {
+    return foo();
+}
+void test_return_unique_ptr() {
+    std::unique_ptr<int> p = foo2();
+    printf("p value %d \r\n",*p);
+}
 
 int main() {
 
-    smart_pointer_perf(NewType,"test new");
-    smart_pointer_perf(SharedType,"test shared_ptr");
-    smart_pointer_perf(MakeSharedType,"test make_shared");
-    smart_pointer_perf(UniqueType,"test unique_ptr");
-    smart_pointer_perf(MakeUniqueType,"test make_unique");
+//    smart_pointer_perf(NewType,"test new");
+//    smart_pointer_perf(SharedType,"test shared_ptr");
+//    smart_pointer_perf(MakeSharedType,"test make_shared");
+//    smart_pointer_perf(UniqueType,"test unique_ptr");
+//    smart_pointer_perf(MakeUniqueType,"test make_unique");
+
+    test_return_unique_ptr();
 
     printf("end\r\n");
     return 0;
