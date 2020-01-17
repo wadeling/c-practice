@@ -42,7 +42,7 @@ int test_coredump_case() {
     std::string value;
     int ret;
 
-    ret = que.Put("value");
+    ret = que.Put("xxx");
     if( ret != 0) {
         printf("put err %d\r\n",ret);
         return -1;

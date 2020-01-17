@@ -39,9 +39,15 @@ struct SQueShmHeadBlockInfo
     uint32_t u32Seq;    //防止cas的ABA问题
 };
 
-struct SQueShmFreeBlocksInfo
+union UQueShmHeadBlockInfo
 {
     SQueShmHeadBlockInfo stHeadInfo;
+    uint64_t u64Value;
+};
+
+struct SQueShmFreeBlocksInfo
+{
+    UQueShmHeadBlockInfo stHeadInfo;
     uint32_t u32FreeBlockNum;   //只保证最终一致性
     uint8_t ext[4];
 };
@@ -50,8 +56,8 @@ struct SQueShmInfo
 {
     uint8_t head[256];
     SQueShmFreeBlocksInfo stFreeValueBlocksInfo;
-    SQueShmHeadBlockInfo stReadIndex;
-    SQueShmHeadBlockInfo stWriteIndex;
+    UQueShmHeadBlockInfo stReadIndex;
+    UQueShmHeadBlockInfo stWriteIndex;
     uint32_t u32ValueBlockNum;
     uint32_t u32ValueBlockDataSize;
     uint32_t u32QueSize;
@@ -67,7 +73,7 @@ struct SQueShmBlockInfo
 
 struct SQueShmIndexInfo
 {
-    SQueShmHeadBlockInfo stValueHeadInfo;
+    UQueShmHeadBlockInfo stValueHeadInfo;
     uint32_t u32LastPutTs;
     uint32_t u32LastPopTs;
     uint8_t ext[8];

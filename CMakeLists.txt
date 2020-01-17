@@ -40,4 +40,5 @@ add_executable(c_practice
         concurrentqueue_demo/src/main.cpp
         thread_entry_demo/src/main.cpp
         thread_entry_demo/src/registry.h
+        mutex_demo/src/main.cpp
         )

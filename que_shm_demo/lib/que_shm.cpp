@@ -261,7 +261,7 @@ int CQueShm::BuildShm(int& iShmFd)
         memset(addr, 0, size);
 
         SQueShmInfo* pShmInfo = (SQueShmInfo*)addr;
-        pShmInfo->stFreeValueBlocksInfo.stHeadInfo.u32Head = _iValueBlockNum <= QUE_SHM_BLOCK_BEGIN ? QUE_SHM_BLOCK_END : QUE_SHM_BLOCK_BEGIN;
+        pShmInfo->stFreeValueBlocksInfo.stHeadInfo.stHeadInfo.u32Head = _iValueBlockNum <= QUE_SHM_BLOCK_BEGIN ? QUE_SHM_BLOCK_END : QUE_SHM_BLOCK_BEGIN;
         pShmInfo->stFreeValueBlocksInfo.u32FreeBlockNum = _iValueBlockNum <= QUE_SHM_BLOCK_BEGIN ? 0 : _iValueBlockNum - QUE_SHM_BLOCK_BEGIN;
         pShmInfo->u32ValueBlockNum = _iValueBlockNum;
         pShmInfo->u32ValueBlockDataSize = _iValueBlockDataSize;
@@ -303,7 +303,7 @@ int CQueShm::Size(unsigned& uiSize)
         return iRet;
     }
 
-    uiSize = Size(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head);
+    uiSize = Size(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head);
 
     return 0;
 }
@@ -334,7 +334,7 @@ int CQueShm::Full(bool& bFlag)
         return iRet;
     }
 
-    bFlag = Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head);
+    bFlag = Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head);
 
     return 0;
 }
@@ -376,7 +376,7 @@ int CQueShm::Empty(bool& bFlag)
         return iRet;
     }
 
-    bFlag = Empty(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head);
+    bFlag = Empty(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head);
 
     return 0;
 }
@@ -394,40 +394,41 @@ uint32_t CQueShm::NextIndex(uint32_t u32CurIndex)
 void CQueShm::TryFixReadIndex()
 {
     /*
-    if(Empty(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head))
+    if(Empty(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head))
     {
         return;
     }
     */
 
     //快速退出
-    unsigned uiIndexCheck = NextIndex(_stShmInfo.pstShmInfo->stReadIndex.u32Head);
-    if(QUE_SHM_BLOCK_END != _stShmInfo.pIndexArray[uiIndexCheck].stValueHeadInfo.u32Head)
+    unsigned uiIndexCheck = NextIndex(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head);
+    if(QUE_SHM_BLOCK_END != _stShmInfo.pIndexArray[uiIndexCheck].stValueHeadInfo.stHeadInfo.u32Head)
     {
         return;
     }
 
-    SQueShmHeadBlockInfo stReadIndexOld;
+    UQueShmHeadBlockInfo stReadIndexOld;
+    stReadIndexOld.u64Value = 0;
 
-    QUE_SHM_CAS(&stReadIndexOld, stReadIndexOld, _stShmInfo.pstShmInfo->stReadIndex);
+    QUE_SHM_CAS(&stReadIndexOld.u64Value, stReadIndexOld.u64Value, _stShmInfo.pstShmInfo->stReadIndex.u64Value);
 
-    if(Empty(stReadIndexOld.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head))
+    if(Empty(stReadIndexOld.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head))
     {
         return;
     }
 
-    unsigned uiIndex = NextIndex(stReadIndexOld.u32Head);
+    unsigned uiIndex = NextIndex(stReadIndexOld.stHeadInfo.u32Head);
 
-    if(QUE_SHM_BLOCK_END != _stShmInfo.pIndexArray[uiIndex].stValueHeadInfo.u32Head)
+    if(QUE_SHM_BLOCK_END != _stShmInfo.pIndexArray[uiIndex].stValueHeadInfo.stHeadInfo.u32Head)
     {
         return;
     }
 
-    SQueShmHeadBlockInfo stReadIndexNew;
-    stReadIndexNew.u32Head = uiIndex;
-    stReadIndexNew.u32Seq = stReadIndexOld.u32Seq + 1;
+    UQueShmHeadBlockInfo stReadIndexNew;
+    stReadIndexNew.stHeadInfo.u32Head = uiIndex;
+    stReadIndexNew.stHeadInfo.u32Seq = stReadIndexOld.stHeadInfo.u32Seq + 1;
 
-    if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stReadIndex, stReadIndexOld, stReadIndexNew))
+    if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stReadIndex.u64Value, stReadIndexOld.u64Value, stReadIndexNew.u64Value))
     {
 #ifdef QUE_SHM_UPDATE_LAST_TS
         _stShmInfo.pIndexArray[uiIndex].u32LastPopTs = time(NULL);
@@ -440,40 +441,41 @@ void CQueShm::TryFixReadIndex()
 void CQueShm::TryFixWriteIndex()
 {
     /*
-    if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head))
+    if(Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head))
     {
         return;
     }
     */
 
     //快速退出
-    unsigned uiIndexCheck = NextIndex(_stShmInfo.pstShmInfo->stWriteIndex.u32Head);
-    if(QUE_SHM_BLOCK_END == _stShmInfo.pIndexArray[uiIndexCheck].stValueHeadInfo.u32Head)
+    unsigned uiIndexCheck = NextIndex(_stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head);
+    if(QUE_SHM_BLOCK_END == _stShmInfo.pIndexArray[uiIndexCheck].stValueHeadInfo.stHeadInfo.u32Head)
     {
         return;
     }
 
-    SQueShmHeadBlockInfo stWriteIndexOld;
+    UQueShmHeadBlockInfo stWriteIndexOld;
+    stWriteIndexOld.u64Value = 0;
 
-    QUE_SHM_CAS(&stWriteIndexOld, stWriteIndexOld, _stShmInfo.pstShmInfo->stWriteIndex);
+    QUE_SHM_CAS(&stWriteIndexOld.u64Value, stWriteIndexOld.u64Value, _stShmInfo.pstShmInfo->stWriteIndex.u64Value);
 
-    if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, stWriteIndexOld.u32Head))
+    if(Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, stWriteIndexOld.stHeadInfo.u32Head))
     {
         return;
     }
 
-    unsigned uiIndex = NextIndex(stWriteIndexOld.u32Head);
+    unsigned uiIndex = NextIndex(stWriteIndexOld.stHeadInfo.u32Head);
 
-    if(QUE_SHM_BLOCK_END == _stShmInfo.pIndexArray[uiIndex].stValueHeadInfo.u32Head)
+    if(QUE_SHM_BLOCK_END == _stShmInfo.pIndexArray[uiIndex].stValueHeadInfo.stHeadInfo.u32Head)
     {
         return;
     }
 
-    SQueShmHeadBlockInfo stWriteIndexNew;
-    stWriteIndexNew.u32Head = uiIndex;
-    stWriteIndexNew.u32Seq = stWriteIndexOld.u32Seq + 1;
+    UQueShmHeadBlockInfo stWriteIndexNew;
+    stWriteIndexNew.stHeadInfo.u32Head = uiIndex;
+    stWriteIndexNew.stHeadInfo.u32Seq = stWriteIndexOld.stHeadInfo.u32Seq + 1;
 
-    if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stWriteIndex, stWriteIndexOld, stWriteIndexNew))
+    if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stWriteIndex.u64Value, stWriteIndexOld.u64Value, stWriteIndexNew.u64Value))
     {
 #ifdef QUE_SHM_UPDATE_LAST_TS
         _stShmInfo.pIndexArray[uiIndex].u32LastPutTs = time(NULL);
@@ -486,7 +488,6 @@ void CQueShm::TryFixWriteIndex()
 int CQueShm::Put(const std::string& sValue)
 {
     CQueShmStringReader oReader(sValue);
-    printf("put oReader end.\r\n");
     return Put(oReader);
 }
 
@@ -500,24 +501,20 @@ int CQueShm::Put(CQueShmReader& oReader)
         return iRet;
     }
 
-    printf("put init end.\r\n");
-
     TryFixReadIndex();
 
-    printf("try fix read index end.\r\n");
-
-    if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head))
+    if(Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head))
     {
-        SQueShmHeadBlockInfo stWriteIndexOld;
+        UQueShmHeadBlockInfo stWriteIndexOld;
 
         for(;;)
         {
-            QUE_SHM_CAS(&stWriteIndexOld, stWriteIndexOld, _stShmInfo.pstShmInfo->stWriteIndex);
+            QUE_SHM_CAS(&stWriteIndexOld.u64Value, stWriteIndexOld.u64Value, _stShmInfo.pstShmInfo->stWriteIndex.u64Value);
 
-            if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, stWriteIndexOld.u32Head))
+            if(Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, stWriteIndexOld.stHeadInfo.u32Head))
             {
-                if(stWriteIndexOld.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.u32Head
-                   || stWriteIndexOld.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.u32Seq)
+                if(stWriteIndexOld.stHeadInfo.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head
+                   || stWriteIndexOld.stHeadInfo.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Seq)
                 {
                     continue;
                 }
@@ -537,16 +534,12 @@ int CQueShm::Put(CQueShmReader& oReader)
         return iRet;
     }
 
-    printf("get reader size end\r\n");
-
     int iBlockIndex = 0;
     iRet = MallocBlock(size, iBlockIndex);
     if(0 != iRet)
     {
         return iRet;
     }
-
-    printf("malloc block end\r\n");
 
     iRet = Fragment(oReader,
                     size,
@@ -562,8 +555,6 @@ int CQueShm::Put(CQueShmReader& oReader)
 
     iRet = Put(iBlockIndex);
 
-    printf("put end\r\n");
-
     if(0 != iRet)
     {
         FreeBlock(iBlockIndex);
@@ -576,19 +567,19 @@ int CQueShm::Put(CQueShmReader& oReader)
 
 int CQueShm::Put(int iBlockIndex)
 {
-    SQueShmHeadBlockInfo stBlocksInfoOld;
-    SQueShmHeadBlockInfo stBlocksInfoNew;
+    UQueShmHeadBlockInfo stBlocksInfoOld;
+    UQueShmHeadBlockInfo stBlocksInfoNew;
 
-    SQueShmHeadBlockInfo stWriteIndexOld;
+    UQueShmHeadBlockInfo stWriteIndexOld;
 
     for(;;)
     {
-        QUE_SHM_CAS(&stWriteIndexOld, stWriteIndexOld, _stShmInfo.pstShmInfo->stWriteIndex);
+        QUE_SHM_CAS(&stWriteIndexOld.u64Value, stWriteIndexOld.u64Value, _stShmInfo.pstShmInfo->stWriteIndex.u64Value);
 
-        if(Full(_stShmInfo.pstShmInfo->stReadIndex.u32Head, stWriteIndexOld.u32Head))
+        if(Full(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, stWriteIndexOld.stHeadInfo.u32Head))
         {
-            if(stWriteIndexOld.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.u32Head
-               || stWriteIndexOld.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.u32Seq)
+            if(stWriteIndexOld.stHeadInfo.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head
+               || stWriteIndexOld.stHeadInfo.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Seq)
             {
                 continue;
             }
@@ -596,34 +587,34 @@ int CQueShm::Put(int iBlockIndex)
             return EC_QUE_SHM_FULL;
         }
 
-        unsigned uiIndex = NextIndex(stWriteIndexOld.u32Head);
+        unsigned uiIndex = NextIndex(stWriteIndexOld.stHeadInfo.u32Head);
 
-        SQueShmHeadBlockInfo* pstHeadInfo = &_stShmInfo.pIndexArray[uiIndex].stValueHeadInfo;
+        UQueShmHeadBlockInfo* pstHeadInfo = &_stShmInfo.pIndexArray[uiIndex].stValueHeadInfo;
 
-        QUE_SHM_CAS(&stBlocksInfoOld, stBlocksInfoOld, *pstHeadInfo);
+        QUE_SHM_CAS(&stBlocksInfoOld.u64Value, stBlocksInfoOld.u64Value, pstHeadInfo->u64Value);
 
-        if(QUE_SHM_BLOCK_END != stBlocksInfoOld.u32Head)
+        if(QUE_SHM_BLOCK_END != stBlocksInfoOld.stHeadInfo.u32Head)
         {
             TryFixWriteIndex();
             continue;
         }
 
-        if(stWriteIndexOld.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.u32Head
-           || stWriteIndexOld.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.u32Seq)
+        if(stWriteIndexOld.stHeadInfo.u32Head != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head
+           || stWriteIndexOld.stHeadInfo.u32Seq != _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Seq)
         {
             continue;
         }
 
-        stBlocksInfoNew.u32Head = iBlockIndex;
-        stBlocksInfoNew.u32Seq = stBlocksInfoOld.u32Seq + 1;
+        stBlocksInfoNew.stHeadInfo.u32Head = iBlockIndex;
+        stBlocksInfoNew.stHeadInfo.u32Seq = stBlocksInfoOld.stHeadInfo.u32Seq + 1;
 
-        if(QUE_SHM_CAS(pstHeadInfo, stBlocksInfoOld, stBlocksInfoNew))
+        if(QUE_SHM_CAS(&pstHeadInfo->u64Value, stBlocksInfoOld.u64Value, stBlocksInfoNew.u64Value))
         {
-            SQueShmHeadBlockInfo stWriteIndexNew;
-            stWriteIndexNew.u32Head = uiIndex;
-            stWriteIndexNew.u32Seq = stWriteIndexOld.u32Seq + 1;
+            UQueShmHeadBlockInfo stWriteIndexNew;
+            stWriteIndexNew.stHeadInfo.u32Head = uiIndex;
+            stWriteIndexNew.stHeadInfo.u32Seq = stWriteIndexOld.stHeadInfo.u32Seq + 1;
 
-            if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stWriteIndex, stWriteIndexOld, stWriteIndexNew))
+            if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stWriteIndex.u64Value, stWriteIndexOld.u64Value, stWriteIndexNew.u64Value))
             {
 #ifdef QUE_SHM_UPDATE_LAST_TS
                 _stShmInfo.pIndexArray[uiIndex].u32LastPutTs = time(NULL);
@@ -659,19 +650,19 @@ int CQueShm::Pop(CQueShmWriter& oWriter)
 
     TryFixWriteIndex();
 
-    SQueShmHeadBlockInfo stBlocksInfoOld;
-    SQueShmHeadBlockInfo stBlocksInfoNew;
+    UQueShmHeadBlockInfo stBlocksInfoOld;
+    UQueShmHeadBlockInfo stBlocksInfoNew;
 
-    SQueShmHeadBlockInfo stReadIndexOld;
+    UQueShmHeadBlockInfo stReadIndexOld;
 
     for(;;)
     {
-        QUE_SHM_CAS(&stReadIndexOld, stReadIndexOld, _stShmInfo.pstShmInfo->stReadIndex);
+        QUE_SHM_CAS(&stReadIndexOld.u64Value, stReadIndexOld.u64Value, _stShmInfo.pstShmInfo->stReadIndex.u64Value);
 
-        if(Empty(_stShmInfo.pstShmInfo->stWriteIndex.u32Head, stReadIndexOld.u32Head))
+        if(Empty(_stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head, stReadIndexOld.stHeadInfo.u32Head))
         {
-            if(stReadIndexOld.u32Head != _stShmInfo.pstShmInfo->stReadIndex.u32Head
-               || stReadIndexOld.u32Seq != _stShmInfo.pstShmInfo->stReadIndex.u32Seq)
+            if(stReadIndexOld.stHeadInfo.u32Head != _stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head
+               || stReadIndexOld.stHeadInfo.u32Seq != _stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Seq)
             {
                 continue;
             }
@@ -679,31 +670,31 @@ int CQueShm::Pop(CQueShmWriter& oWriter)
             return EC_QUE_SHM_EMPTY;
         }
 
-        unsigned uiIndex = NextIndex(stReadIndexOld.u32Head);
+        unsigned uiIndex = NextIndex(stReadIndexOld.stHeadInfo.u32Head);
 
-        SQueShmHeadBlockInfo* pstHeadInfo = &_stShmInfo.pIndexArray[uiIndex].stValueHeadInfo;
+        UQueShmHeadBlockInfo* pstHeadInfo = &_stShmInfo.pIndexArray[uiIndex].stValueHeadInfo;
 
-        QUE_SHM_CAS(&stBlocksInfoOld, stBlocksInfoOld, *pstHeadInfo);
+        QUE_SHM_CAS(&stBlocksInfoOld.u64Value, stBlocksInfoOld.u64Value, pstHeadInfo->u64Value);
 
-        if(QUE_SHM_BLOCK_END == stBlocksInfoOld.u32Head)
+        if(QUE_SHM_BLOCK_END == stBlocksInfoOld.stHeadInfo.u32Head)
         {
             TryFixReadIndex();
             continue;
         }
 
-        if(stReadIndexOld.u32Head != _stShmInfo.pstShmInfo->stReadIndex.u32Head
-           || stReadIndexOld.u32Seq != _stShmInfo.pstShmInfo->stReadIndex.u32Seq)
+        if(stReadIndexOld.stHeadInfo.u32Head != _stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head
+           || stReadIndexOld.stHeadInfo.u32Seq != _stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Seq)
         {
             continue;
         }
 
-        stBlocksInfoNew.u32Head = 0;
-        stBlocksInfoNew.u32Seq = stBlocksInfoOld.u32Seq + 1;
+        stBlocksInfoNew.stHeadInfo.u32Head = 0;
+        stBlocksInfoNew.stHeadInfo.u32Seq = stBlocksInfoOld.stHeadInfo.u32Seq + 1;
 
-        uint32_t u32ValueSize = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, stBlocksInfoOld.u32Head)->u32ListSize;
+        uint32_t u32ValueSize = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, stBlocksInfoOld.stHeadInfo.u32Head)->u32ListSize;
         if(0 == u32ValueSize)
         {
-            QUE_SHM_CAS(pstHeadInfo, stBlocksInfoOld, stBlocksInfoNew);
+            QUE_SHM_CAS(&pstHeadInfo->u64Value, stBlocksInfoOld.u64Value, stBlocksInfoNew.u64Value);
             continue;
         }
 
@@ -713,29 +704,29 @@ int CQueShm::Pop(CQueShmWriter& oWriter)
             return iRet;
         }
 
-        if(QUE_SHM_CAS(pstHeadInfo, stBlocksInfoOld, stBlocksInfoNew))
+        if(QUE_SHM_CAS(&pstHeadInfo->u64Value, stBlocksInfoOld.u64Value, stBlocksInfoNew.u64Value))
         {
-            SQueShmHeadBlockInfo stReadIndexNew;
-            stReadIndexNew.u32Head = uiIndex;
-            stReadIndexNew.u32Seq = stReadIndexOld.u32Seq + 1;
+            UQueShmHeadBlockInfo stReadIndexNew;
+            stReadIndexNew.stHeadInfo.u32Head = uiIndex;
+            stReadIndexNew.stHeadInfo.u32Seq = stReadIndexOld.stHeadInfo.u32Seq + 1;
 
-            if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stReadIndex, stReadIndexOld, stReadIndexNew))
+            if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stReadIndex.u64Value, stReadIndexOld.u64Value, stReadIndexNew.u64Value))
             {
 #ifdef QUE_SHM_UPDATE_LAST_TS
                 _stShmInfo.pIndexArray[uiIndex].u32LastPopTs = time(NULL);
 #endif
             }
 
-            iRet = Reassemble(stBlocksInfoOld.u32Head, u32ValueSize, oWriter);
+            iRet = Reassemble(stBlocksInfoOld.stHeadInfo.u32Head, u32ValueSize, oWriter);
             if(0 != iRet)
             {
                 if(EC_QUE_SHM_DATA_ABNORMAL != iRet)
                 {
-                    FreeBlock(stBlocksInfoOld.u32Head);
+                    FreeBlock(stBlocksInfoOld.stHeadInfo.u32Head);
                 }
                 return iRet;
             }
-            FreeBlock(stBlocksInfoOld.u32Head);
+            FreeBlock(stBlocksInfoOld.stHeadInfo.u32Head);
 
             return 0;
         }
@@ -755,19 +746,19 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
         return EC_QUE_SHM_MALLOC_ZERO;
     }
 
-    printf("malloc block ,size %lu,index %d\r\n",size,iBlockIndex);
-
     int iRet = 0;
-    SQueShmHeadBlockInfo stBlocksInfoOld;
-    SQueShmHeadBlockInfo stBlocksInfoNew;
+
+    UQueShmHeadBlockInfo stBlocksInfoOld;
+    UQueShmHeadBlockInfo stBlocksInfoNew;
+    stBlocksInfoOld.u64Value = 0;
+    stBlocksInfoNew.u64Value = 0;
+
     for(;;)
     {
-        QUE_SHM_CAS(&stBlocksInfoOld, stBlocksInfoOld, _stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo);
-
-        printf("que shm cas end \r\n");
+        QUE_SHM_CAS(&stBlocksInfoOld.u64Value, stBlocksInfoOld.u64Value, _stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo.u64Value);
 
         unsigned uiTailIndex = 0;
-        iRet = GetTailBlockIndex(stBlocksInfoOld.u32Head, size, uiTailIndex);
+        iRet = GetTailBlockIndex(stBlocksInfoOld.stHeadInfo.u32Head, size, uiTailIndex);
         if(0 != iRet)
         {
             if(*(QUE_SHM_INT_TYPE*)&stBlocksInfoOld == *(QUE_SHM_INT_TYPE*)&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo)
@@ -780,21 +771,14 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
             }
         }
 
-        printf("get tail block index end \r\n");
-
         SQueShmBlockInfo* pTailBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, uiTailIndex);
 
-        printf("QUE_SHM_GET_BLOCK_PTR\r\n");
+        stBlocksInfoNew.stHeadInfo.u32Head = pTailBlock->u32Next;
+        stBlocksInfoNew.stHeadInfo.u32Seq = stBlocksInfoOld.stHeadInfo.u32Seq + 1;
 
-        stBlocksInfoNew.u32Head = pTailBlock->u32Next;
-        stBlocksInfoNew.u32Seq = stBlocksInfoOld.u32Seq + 1;
-
-        if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo, stBlocksInfoOld, stBlocksInfoNew))
+        if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo.u64Value, stBlocksInfoOld.u64Value, stBlocksInfoNew.u64Value))
         {
-
-            printf("que shm cas end\r\n");
-
-            SQueShmBlockInfo* pHeadBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, stBlocksInfoOld.u32Head);
+            SQueShmBlockInfo* pHeadBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, stBlocksInfoOld.stHeadInfo.u32Head);
             pHeadBlock->u32ListSize = size;
 
             pTailBlock->u32Next = QUE_SHM_BLOCK_END;
@@ -802,12 +786,10 @@ int CQueShm::MallocBlock(size_t size, int& iBlockIndex)
             uint32_t u32UsedNum = (size + _stShmInfo.pstShmInfo->u32ValueBlockDataSize - 1) / _stShmInfo.pstShmInfo->u32ValueBlockDataSize;
             QUE_SHM_FAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.u32FreeBlockNum, u32UsedNum);
 
-            iBlockIndex = stBlocksInfoOld.u32Head;
+            iBlockIndex = stBlocksInfoOld.stHeadInfo.u32Head;
 
             return 0;
         }
-
-        printf("que shm cas end 2\r\n");
     }
 }
 
@@ -861,18 +843,18 @@ void CQueShm::FreeBlock(uint32_t u32Head)
 
     SQueShmBlockInfo* pHeadBlock = QUE_SHM_GET_BLOCK_PTR(_stShmInfo.pValueBlockArray, _stShmInfo.pstShmInfo->u32ValueBlockDataSize, u32Head);
     uint32_t u32FreeBlockNum = (pHeadBlock->u32ListSize + _stShmInfo.pstShmInfo->u32ValueBlockDataSize - 1) / _stShmInfo.pstShmInfo->u32ValueBlockDataSize;
-    SQueShmHeadBlockInfo stBlocksInfoOld;
-    SQueShmHeadBlockInfo stBlocksInfoNew;
+    UQueShmHeadBlockInfo stBlocksInfoOld;
+    UQueShmHeadBlockInfo stBlocksInfoNew;
     for(;;)
     {
-        QUE_SHM_CAS(&stBlocksInfoOld, stBlocksInfoOld, _stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo);
+        QUE_SHM_CAS(&stBlocksInfoOld.u64Value, stBlocksInfoOld.u64Value, _stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo.u64Value);
 
-        pTailBlock->u32Next = stBlocksInfoOld.u32Head;
+        pTailBlock->u32Next = stBlocksInfoOld.stHeadInfo.u32Head;
         pHeadBlock->u32ListSize = 0;
-        stBlocksInfoNew.u32Head = u32Head;
-        stBlocksInfoNew.u32Seq = stBlocksInfoOld.u32Seq + 1;
+        stBlocksInfoNew.stHeadInfo.u32Head = u32Head;
+        stBlocksInfoNew.stHeadInfo.u32Seq = stBlocksInfoOld.stHeadInfo.u32Seq + 1;
 
-        if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo, stBlocksInfoOld, stBlocksInfoNew))
+        if(QUE_SHM_CAS(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.stHeadInfo.u64Value, stBlocksInfoOld.u64Value, stBlocksInfoNew.u64Value))
         {
             QUE_SHM_FAA(&_stShmInfo.pstShmInfo->stFreeValueBlocksInfo.u32FreeBlockNum, u32FreeBlockNum);
             return;
@@ -947,7 +929,7 @@ int CQueShm::GetIndexInfo(unsigned& uiUsedNum, unsigned& uiAllNum)
     }
 
     uiAllNum = _stShmInfo.pstShmInfo->u32QueSize;
-    uiUsedNum = Size(_stShmInfo.pstShmInfo->stReadIndex.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.u32Head);
+    uiUsedNum = Size(_stShmInfo.pstShmInfo->stReadIndex.stHeadInfo.u32Head, _stShmInfo.pstShmInfo->stWriteIndex.stHeadInfo.u32Head);
 
     return 0;
 }
